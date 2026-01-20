@@ -13,6 +13,11 @@ CLASSES             = {
     2: 'Bottle Opener',
     3: 'Cuboid'
 }
+ANNOTATION_SPLITS = [
+    'train',
+    'val',
+    'test'
+]
 
 COLOR_DEFAULT = (255, 255, 255)
 COLOR_TEXT = (0, 0, 0)
@@ -406,6 +411,11 @@ def _key_options_image(width, margin, selected, txt_scale, txt_thickness):
     px += ox
     py = margin
 
+    key_size = _draw_key_info(img_keyoptions, 'N', 'Select Next Annotation', (px, py), COLOR_TEXT, txt_scale)
+    px += ox
+    key_size = _draw_key_info(img_keyoptions, 'C', 'Copy Annotations to next Image', (px, py), COLOR_TEXT, txt_scale)
+    px -= ox
+
     px += key_size + margin
     py += 2 * (key_size + margin)
     key_size = _draw_key_info(img_keyoptions, 'W', '', (px, py), COLOR_TEXT if selected == 'point' else COLOR_GRAY, txt_scale)
@@ -614,9 +624,12 @@ def abs2rel(img, x_abs, y_abs):
     return x_rel, y_rel
 
 def _annotated_cnt(dataset_directory):
-    cnt = len(list(glob(f'{dataset_directory}/train/*.json'))) +\
-          len(list(glob(f'{dataset_directory}/val/*.json'))) +\
-          len(list(glob(f'{dataset_directory}/test/*.json')))
+    # cnt = len(list(glob(f'{dataset_directory}/train/*.json'))) +\
+    #       len(list(glob(f'{dataset_directory}/val/*.json'))) +\
+    #       len(list(glob(f'{dataset_directory}/test/*.json')))
+    cnt = 0
+    for split in ANNOTATION_SPLITS:
+        cnt += len(list(glob(f'{dataset_directory}/{split}/*.json')))
     return cnt
 
 def annotate_dataset(dataset_directory):
@@ -625,11 +638,15 @@ def annotate_dataset(dataset_directory):
     Args:
         dataset_directory (str or Path): Path to the dataset directory.
     """
-    img_files = sorted(
-        list(glob(os.path.join(dataset_directory, 'train', '*.JPG'))) + 
-        list(glob(os.path.join(dataset_directory, 'val', '*.JPG'))) +
-        list(glob(os.path.join(dataset_directory, 'test', '*.JPG')))
-    )
+    # img_files = sorted(
+    #     list(glob(os.path.join(dataset_directory, 'train', '*.JPG'))) + 
+    #     list(glob(os.path.join(dataset_directory, 'val', '*.JPG'))) +
+    #     list(glob(os.path.join(dataset_directory, 'test', '*.JPG')))
+    # )
+    img_files = []
+    for split in ANNOTATION_SPLITS:
+        img_files += list(glob(os.path.join(dataset_directory, split, '*.JPG')))
+    img_files = sorted(img_files)
 
     meta_info = {
         'selected': 'point',  # image, annotation, point, class
@@ -650,11 +667,12 @@ def annotate_dataset(dataset_directory):
         'y': -1
     }
 
-    cv.namedWindow('image')
-    cv.setMouseCallback('image', on_mouse, param=mouse)
+    window_name = 'Annotation'
+    cv.namedWindow(window_name)
+    cv.setMouseCallback(window_name, on_mouse, param=mouse)
 
     if SKIP_ANNOTATED:
-        while Path(meta_info['img_file']).with_suffix('.json').exists() == True:
+        while Path(meta_info['img_file']).with_suffix('.json').exists() == True and meta_info['img_idx'] < meta_info['file_cnt'] - 1:
             meta_info['img_idx'] += 1
             meta_info['img_file'] = img_files[meta_info['img_idx']]
 
@@ -729,6 +747,8 @@ def annotate_dataset(dataset_directory):
             break
         elif key != -1:
             pass
+    cv.destroyAllWindows()
+    cv.waitKey(1)
 
 if __name__ == '__main__':
     annotate_dataset('data')
