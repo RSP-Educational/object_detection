@@ -25,7 +25,7 @@ ANNOTATION_SPLITS = [
 
 KEY_OPTION_IMAGES = None
 SHAPE_IMAGES = None
-DISPLAY_IMAGE_SIZE = (1*3264//2, 1*4896//2)
+DISPLAY_IMAGE_SIZE = (1*3264//3, 1*4896//3)
 
 def on_mouse(event,x,y,flags,param):
     global mouseX,mouseY
@@ -424,7 +424,7 @@ def _key_options_image(width, margin, selected, txt_scale, txt_thickness):
     px += ox
     py = margin
 
-    key_size = _draw_key_info(img_keyoptions, 'N', 'Select Next Annotation', (px, py), COLOR_TEXT, txt_scale)
+    key_size = _draw_key_info(img_keyoptions, 'B', 'Select Next Annotation', (px, py), COLOR_TEXT, txt_scale)
     px += ox
     key_size = _draw_key_info(img_keyoptions, 'C', 'Copy Annotations to next Image', (px, py), COLOR_TEXT, txt_scale)
     px -= ox
@@ -455,9 +455,9 @@ def _key_options_image(width, margin, selected, txt_scale, txt_thickness):
 
     px -= ox
     py += key_size + margin
-    key_size = _draw_key_info(img_keyoptions, 'arrow left', f'Previous {selected}', (px, py), COLOR_TEXT, txt_scale)
+    key_size = _draw_key_info(img_keyoptions, 'N', f'Previous {selected}', (px, py), COLOR_TEXT, txt_scale)
     px += ox
-    key_size = _draw_key_info(img_keyoptions, 'arrow right', f'Next {selected}', (px, py), COLOR_TEXT, txt_scale)
+    key_size = _draw_key_info(img_keyoptions, 'M', f'Next {selected}', (px, py), COLOR_TEXT, txt_scale)
     return img_keyoptions
 
 def render(img, annotations, meta_info, window_name):
@@ -750,18 +750,18 @@ def annotate_dataset(dataset_directory):
             elif key == ord('d'):
                 annotations[meta_info['anno_idx']]['points'][meta_info['pt_idx']][0] = pt[0] + 1/1000
             #save(meta_info['img_file'], annotations)
-        elif key == 3 or mouse['right_clicked']:  # Right arrow key
+        elif key == 3 or key == ord('m') or mouse['right_clicked']:  # Right arrow key
             mouse['right_clicked'] = False
             if meta_info['selected'] == 'image':
                 save(meta_info['img_file'], annotations)
             img, annotations = select_next(img, annotations, meta_info, img_files)
             meta_info['class_idx'] = annotations[meta_info['anno_idx']]['class']
-        elif key == 2:  # Left arrow key
+        elif key == 2 or key == ord('n'):  # Left arrow key
             if meta_info['selected'] == 'image':
                 save(meta_info['img_file'], annotations)
             img, annotations = select_previous(img, annotations, meta_info, img_files)
             meta_info['class_idx'] = annotations[meta_info['anno_idx']]['class']
-        elif key == ord('n') and meta_info['selected'] == 'point':
+        elif key == ord('b') and meta_info['selected'] == 'point':
             meta_info['anno_idx'] = (meta_info['anno_idx'] + 1) % len(annotations)
             meta_info['pt_idx'] = 0
         elif key == ord('c'): # copy annotations to next image
