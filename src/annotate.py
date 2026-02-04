@@ -25,7 +25,7 @@ ANNOTATION_SPLITS = [
 
 KEY_OPTION_IMAGES = None
 SHAPE_IMAGES = None
-DISPLAY_IMAGE_SIZE = (5*3264//18, 5*4896//18)
+DISPLAY_IMAGE_SIZE = (6*3264//20, 6*4896//20)
 
 def on_mouse(event,x,y,flags,param):
     global mouseX,mouseY
