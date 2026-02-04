@@ -6,6 +6,7 @@ from huggingface_hub import snapshot_download
 from glob import glob
 from typing import List, Tuple
 
+
 REPO_ID = "SchulzR97/DHSN_BottleOpener"
 LOCAL_DIR = 'data/DHSN_BottleOpener'
 
@@ -101,27 +102,25 @@ def publish_dataset(dataset_directory, splits = ['train', 'val', 'test']):
 
     _login()
 
+    # upload annotations and images
     repo_files = list_repo_files(REPO_ID, repo_type='dataset')
-    repo_annotations = [f for f in repo_files if f.endswith('.json')]
+    repo_annotations = [f"{split}/{Path(file).name}" for split in splits for file in repo_files if file.startswith(f"{split}/") and file.endswith('.json')]
 
-    local_annotations = []
-    for split in splits:
-        split_dir = Path(dataset_directory) / split
-        json_files = list(split_dir.glob('*.json'))
-        annotation_ids = [f"{f.parent.name}/{f.name}" for f in json_files if f.with_suffix('.JPG').exists()]
-        local_annotations.extend(annotation_ids)
+    #local_data_dir = Path(dataset_directory) / 'data'
+    local_annotations = [f"{split}/{Path(file).name}" for split in splits for file in glob(f"{dataset_directory}/{split}/*.json")]
 
-    N_COMMIT = 10
-    new_annotations = [f for f in local_annotations if f not in repo_annotations]
+    N_COMMIT = 20
+    new_annotations = local_annotations# [f for f in local_annotations if f not in repo_annotations]
+    total_cnt = len(new_annotations) + len(repo_annotations)
     operations = []
-    for i, file_id in enumerate(new_annotations):
-        local_annotation_path = f"{dataset_directory}/{file_id}"
+    for i, ann_id in enumerate(new_annotations):
+        local_annotation_path = f"{dataset_directory}/{ann_id}"
         local_image_path = local_annotation_path.replace('.json', '.JPG')
 
-        image_id = file_id.replace('.json', '.JPG')
+        image_id = ann_id.replace('.json', '.JPG')
 
-        operations.append(CommitOperationAdd(path_in_repo=file_id, path_or_fileobj=local_annotation_path))
-        operations.append(CommitOperationAdd(path_in_repo=image_id, path_or_fileobj=local_image_path))
+        operations.append(CommitOperationAdd(path_in_repo=ann_id, path_or_fileobj=local_annotation_path))
+        #operations.append(CommitOperationAdd(path_in_repo=image_id, path_or_fileobj=local_image_path))
         if (i + 1) % N_COMMIT == 0 or (i + 1) == len(new_annotations):
             create_commit(
                 repo_id=REPO_ID,
@@ -130,8 +129,8 @@ def publish_dataset(dataset_directory, splits = ['train', 'val', 'test']):
                 commit_message=f"Add {len(operations)} annotation files."
             )
             operations = []
-        pass
+            print(f"Committed {len(repo_annotations) + i + 1}/{total_cnt} ({(len(repo_annotations) + i+1)/total_cnt*100:.2f}%) annotation files.")
     pass
 
 if __name__ == "__main__":
-    publish_dataset('data')
+    publish_dataset('/Users/schulzr/Documents/Datasets/DHSN_BottleOpener')

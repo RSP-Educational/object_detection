@@ -5,6 +5,10 @@ import json
 import cv2 as cv
 import numpy as np
 import copy
+if __name__== '__main__':
+    from constants import COLOR_DEFAULT, COLOR_TEXT, COLOR_SELECTED, COLOR_GRAY
+else:
+    from src.constants import COLOR_DEFAULT, COLOR_TEXT, COLOR_SELECTED, COLOR_GRAY
 
 SKIP_ANNOTATED      = True
 CLASSES             = {
@@ -19,13 +23,9 @@ ANNOTATION_SPLITS = [
     'test'
 ]
 
-COLOR_DEFAULT = (255, 255, 255)
-COLOR_TEXT = (0, 0, 0)
-COLOR_SELECTED = (250, 150, 150)
-COLOR_GRAY = (200, 200, 200)
-
 KEY_OPTION_IMAGES = None
 SHAPE_IMAGES = None
+DISPLAY_IMAGE_SIZE = (1*3264//2, 1*4896//2)
 
 def on_mouse(event,x,y,flags,param):
     global mouseX,mouseY
@@ -40,12 +40,21 @@ def on_mouse(event,x,y,flags,param):
 
 def load_image(filename):
     img = cv.imread(filename)
-    img = cv.resize(img, (img.shape[1]//2, img.shape[0]//2))
+    f = max(DISPLAY_IMAGE_SIZE[0] / img.shape[0], DISPLAY_IMAGE_SIZE[1] / img.shape[1])
+    img = cv.resize(img, (0, 0), fx=f, fy=f, interpolation=cv.INTER_AREA)
 
     annotation_file = Path(filename).with_suffix('.json')
     if annotation_file.exists():
         with open(annotation_file, 'r') as f:
-            annotations = json.load(f)
+            annotations_loaded = json.load(f)
+            annotations = [
+                {
+                    'points': [[anno['p1x'], anno['p1y']],
+                               [anno['p2x'], anno['p2y']],
+                               [anno['p3x'], anno['p3y']]],
+                    'class': anno['class']
+                } for anno in annotations_loaded
+            ]
     else:
         annotations = [
             {
@@ -270,6 +279,10 @@ def _add_overlay(img, overlay, position, alpha=1.0):
         ex = x + w if x + w < img.shape[1] else img.shape[1]
         sy = y
         ey = y + h if y + h < img.shape[0] else img.shape[0]
+
+        if ex <= sx or ey <= sy:
+            continue
+
         img[sy:ey, sx:ex, c] = (alpha * overlay[0:ey-sy, 0:ex-sx, c] +
                                 (1 - alpha) * img[sy:ey, sx:ex, c])
     return img
@@ -377,7 +390,7 @@ def draw_mouse(img, button, position, color, size=100):
     return img
 
 def _key_options_image(width, margin, selected, txt_scale, txt_thickness):
-    img_keyoptions = np.full((400, width, 3), (255, 255, 255), np.uint8)
+    img_keyoptions = np.full((int(round(0.15 * width)), width, 3), (255, 255, 255), np.uint8)
 
     def _draw_key_info(img, key, info, position, color, txt_scale):
         (tw, th), baseline = cv.getTextSize(info, cv.FONT_HERSHEY_SIMPLEX, txt_scale, txt_thickness)
@@ -447,7 +460,7 @@ def _key_options_image(width, margin, selected, txt_scale, txt_thickness):
     key_size = _draw_key_info(img_keyoptions, 'arrow right', f'Next {selected}', (px, py), COLOR_TEXT, txt_scale)
     return img_keyoptions
 
-def render(img, annotations, meta_info, mouse):
+def render(img, annotations, meta_info, window_name):
     img_out = img.copy()
     img_info = np.full((img_out.shape[0], int(round(img.shape[1] * 0.4)), 3), (255, 255, 255), np.uint8)
     img_file = os.path.basename(meta_info['img_file'])
@@ -593,7 +606,7 @@ def render(img, annotations, meta_info, mouse):
     key_option_img = KEY_OPTION_IMAGES[meta_info['selected']]
     img_out = cv.vconcat([img_out, key_option_img])
 
-    cv.imshow('image', img_out)
+    cv.imshow(window_name, img_out)
     key = cv.waitKey(1)
 
     return key
@@ -611,7 +624,18 @@ def save(img_file, annotations):
             return  # Do not save annotations with all points at (0,0)
     annotation_file = Path(img_file).with_suffix('.json')
     with open(annotation_file, 'w') as f:
-        json.dump(annotations, f, indent=4)
+        annotations_save = [
+            {
+                'class': ann['class'],
+                'p1x': ann['points'][0][0],
+                'p1y': ann['points'][0][1],
+                'p2x': ann['points'][1][0],
+                'p2y': ann['points'][1][1],
+                'p3x': ann['points'][2][0],
+                'p3y': ann['points'][2][1]
+            } for ann in annotations
+        ]
+        json.dump(annotations_save, f, indent=4)
 
 def rel2abs(img, x_rel, y_rel):
     x_abs = int(round(x_rel * img.shape[1]))
@@ -676,13 +700,18 @@ def annotate_dataset(dataset_directory):
             meta_info['img_idx'] += 1
             meta_info['img_file'] = img_files[meta_info['img_idx']]
 
+    # START_IMG = '20251219_095505(2).JPG'
+    # while Path(meta_info['img_file']).name != START_IMG and meta_info['img_idx'] < meta_info['file_cnt'] - 1:
+    #     meta_info['img_idx'] += 1
+    #     meta_info['img_file'] = img_files[meta_info['img_idx']]
+
     img, annotations = load_image(img_files[meta_info['img_idx']])
 
     meta_info['class_idx'] = annotations[meta_info['anno_idx']]['class']
 
     while True:
         #img = img_org.copy()
-        key = render(img, annotations, meta_info, mouse)
+        key = render(img, annotations, meta_info, window_name)
 
         if mouse['clicked']:
             mouse['clicked'] = False
