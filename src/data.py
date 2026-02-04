@@ -34,7 +34,7 @@ def load_points_classes(ann_file: str) -> Tuple[List, List]:
     
     with open(ann_file, 'r') as f:
         annotations = json.load(f)
-    points = np.array([pt for obj in annotations for pt in obj['points']])
+    points = np.array([[[obj['p1x'], obj['p1y']], [obj['p2x'], obj['p2y']], [obj['p3x'], obj['p3y']]] for obj in annotations])
     classes = np.array([obj['class'] for obj in annotations])
     return points, classes
 
