@@ -9,3 +9,4 @@ numpy==1.26.4
 huggingface-hub>=0.35.3
 opencv-python>=4.11
 datasets>=4.2
+matplotlib>=3.8.4
