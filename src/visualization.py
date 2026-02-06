@@ -1,6 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import io
+import cv2 as cv
+from PIL import Image
+
+def _plt2img():
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+
+    image = Image.open(buf)
+    image_array = np.array(image)
+    image_array = cv.cvtColor(image_array, cv.COLOR_RGBA2BGR)
+
+    buf.close()
+    return image_array
 
 def plot_images_with_points(images, points_list, titles):
     if points_list is None:
@@ -29,3 +44,35 @@ def plot_images_with_points(images, points_list, titles):
         plt.title(title)
     plt.tight_layout()
     plt.show()
+
+def plot_series(
+        series:dict[str, list],
+        title:str = "Data Series",
+        xlabel:str="x",
+        ylabel:str="y",
+        show_cv:bool=False
+    ):
+    fig = plt.figure(figsize=(6, 4))
+
+    for key, values in series.items():
+        plt.plot(values, label=key)
+ 
+    plt.title(title)
+    plt.minorticks_on()
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(which='major', linestyle='-', linewidth='0.5', color='gray')
+    plt.grid(which='minor', linestyle=':', linewidth='0.5', color='lightgray')
+    plt.xlim(0, len(next(iter(series.values())))-1)
+    plt.legend()
+
+    if show_cv:
+        img = _plt2img()
+        cv.imshow(title, img)
+        cv.waitKey(1)
+    else:
+        plt.show()
+    
+
+    #img = _plt2np(fig, dpi=180)
+    plt.close(fig)
