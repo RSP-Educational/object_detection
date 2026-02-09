@@ -4,6 +4,9 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import io
+from PIL import Image
+import cv2 as cv
 
 PLOT_COLORS = [
     'tab:blue',
@@ -20,6 +23,18 @@ def _moving_average(data, window:int):
         else:
             _mavg[i] = np.mean(_data[i-window:i])
     return _mavg
+
+def _plt2img():
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+
+    image = Image.open(buf)
+    image_array = np.array(image)
+    image_array = cv.cvtColor(image_array, cv.COLOR_RGBA2BGR)
+
+    buf.close()
+    return image_array
 
 class Run:
     def __init__(
@@ -48,7 +63,7 @@ class Run:
 
     def load(self, model:nn.Module, optimizer:optim.Optimizer):
         if self.checkpoint_file.exists():
-            checkpoint = torch.load(self.checkpoint_file)
+            checkpoint = torch.load(self.checkpoint_file, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.losses = checkpoint['losses']
@@ -70,16 +85,18 @@ class Run:
         return len(self.losses['train']) + 1
 
     def get_values(self, split:str):
+        if len(self.losses[split]) == 0:
+            return [float('inf')]
         return self.losses[split]
     
-    def plot(self):
+    def plot(self, show_cv:bool = False):
         plt.figure(figsize=(8, 6))
 
         l = 0
         for i, (key, value) in enumerate(self.losses.items()):
             _mavg = _moving_average(value, self.mavg_epochs)
             l = max(l, len(value))
-            plt.plot(value, color=PLOT_COLORS[i])
+            plt.plot(value, color=PLOT_COLORS[i], alpha=0.4)
             plt.plot(_mavg, color=PLOT_COLORS[i], label=key, alpha=1.0)
 
         plt.title('Loss over Epoch')
@@ -88,8 +105,14 @@ class Run:
         plt.minorticks_on()
         plt.grid(which='major', linestyle='-', linewidth='0.5', color='gray')
         plt.grid(which='minor', linestyle=':', linewidth='0.5', color='lightgray')
-        plt.xlim(0, l-1)
+        plt.xlim(0, max(1, l-1))
         plt.legend()
 
         plt.savefig(self.loss_plot_file)
+
+        if show_cv:
+            img = _plt2img()
+            cv.imshow("Loss over Epochs", img)
+            cv.waitKey(1)
+
         plt.close()
