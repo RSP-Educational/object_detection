@@ -5,7 +5,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 from glob import glob
 from typing import List, Tuple
-
+from tqdm import tqdm
 
 REPO_ID = "SchulzR97/DHSN_BottleOpener"
 LOCAL_DIR = 'data/DHSN_BottleOpener'
@@ -63,7 +63,7 @@ def load_annotations(split:str) -> str:
     annotation_files = list(glob(str(local_dir / "*.json")))
 
     annotations = []
-    for ann_file in annotation_files:
+    for ann_file in tqdm(annotation_files, desc=f"Loading annotations", leave=False):
         points, classes = load_points_classes(ann_file)
         annotations.append({
             "id": Path(ann_file).stem,

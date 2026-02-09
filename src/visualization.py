@@ -42,6 +42,7 @@ def plot_images_with_points(images, points_list, titles):
         plt.scatter(pts_x, pts_y, c='red', s=10)
         #plt.axis('off')
         plt.title(title)
+        plt.tight_layout()
     plt.tight_layout()
     plt.show()
 
