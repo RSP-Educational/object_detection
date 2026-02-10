@@ -65,9 +65,21 @@ class ObjectDataset(Dataset):
                 kpts_abs[:, 1] *= img_height  # y-Koordinaten
                 
                 # Berechne Bounding Box aus den Keypoints (in Pixelkoordinaten)
-                margin = 20
-                xmin, xmax = kpts_abs[:, 0].min() - margin, kpts_abs[:, 0].max() + margin
-                ymin, ymax = kpts_abs[:, 1].min() - margin, kpts_abs[:, 1].max() + margin
+                # WICHTIG: Margin proportional zur Bildgröße für bessere Generalisierung
+                # und um sicherzustellen, dass Keypoints nach Augmentation nicht abgeschnitten werden
+                margin_ratio = 0.15  # 15% der Keypoint-Spanne als Margin
+                kpt_width = kpts_abs[:, 0].max() - kpts_abs[:, 0].min()
+                kpt_height = kpts_abs[:, 1].max() - kpts_abs[:, 1].min()
+                margin_x = max(30, kpt_width * margin_ratio)  # Minimum 30 Pixel
+                margin_y = max(30, kpt_height * margin_ratio)
+                
+                xmin, xmax = kpts_abs[:, 0].min() - margin_x, kpts_abs[:, 0].max() + margin_x
+                ymin, ymax = kpts_abs[:, 1].min() - margin_y, kpts_abs[:, 1].max() + margin_y
+                
+                # Clip auf Bildgrenzen
+                xmin, ymin = max(0, xmin), max(0, ymin)
+                xmax, ymax = min(img_width, xmax), min(img_height, ymax)
+                
                 boxes.append([xmin, ymin, xmax, ymax])
                 
                 # Formatiere Keypoints für Keypoint R-CNN: [K, 3] wobei 3 = (x, y, visibility)
@@ -169,6 +181,12 @@ class FasterRCNN(nn.Module):
             num_keypoints
         )
         
+        # HINWEIS: Der Keypoint-Loss verwendet intern OKS (Object Keypoint Similarity)
+        # mit COCO-Sigmas. Diese sind für 17 Körper-Keypoints optimiert.
+        # Für 3 geometrische Punkte wären andere Sigmas besser, aber torchvision
+        # bietet keine einfache API um diese zu ändern.
+        # LÖSUNG: Längeres Training + optimierte Box-Größen (siehe __getitem__)
+        
         self.disable_box_regression = disable_box_regression
     
     def forward(self, images, targets=None):
@@ -188,9 +206,9 @@ from torch.utils.data import DataLoader
 import multiprocessing as mp
 
 # TRAINING SETUP
-RUN_ID              = "ObjectDataset/FasterRCNN_512"
-EPOCHS              = 40
-LEARNING_RATE       = 1e-4
+RUN_ID              = "ObjectDataset/FasterRCNN_512_fixed"
+EPOCHS              = 60  # Erhöhe Epochen - der Loss sinkt noch!
+LEARNING_RATE       = 2e-4  # Leicht erhöht für schnelleres Keypoint-Learning
 MIN_LEARNING_RATE   = 1e-6
 BATCH_SIZE          = 2
 IMAGE_SIZE          = (512, 512)#(1024, 1024)
