@@ -2,6 +2,7 @@ import torch
 import cv2 as cv
 import numpy as np
 from pathlib import Path
+from torchvision.ops import nms
 
 from src.data import ObjectDataset
 from src.model import FasterRCNN
@@ -11,9 +12,36 @@ RUN_ID              = "ObjectDataset/FasterRCNN_800"
 IMAGE_SIZE          = (800, 800)
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
 THRESHOLD           = 0.75
+NMS_THRESHOLD       = 0.3  # IoU threshold for NMS (lower = stricter)
 
 COLOR_TARGET        = (0.5, 0.5, 1.0)
 COLOR_PREDICTION    = (1.0, 0.5, 0.5)
+
+def apply_nms(prediction, iou_threshold=0.3):
+    """Apply Non-Maximum Suppression to predictions.
+    
+    Args:
+        prediction: Dictionary with 'boxes', 'scores', 'labels', 'keypoints'
+        iou_threshold: IoU threshold for NMS
+    
+    Returns:
+        Filtered prediction dictionary
+    """
+    if len(prediction['boxes']) == 0:
+        return prediction
+    
+    # Apply NMS on boxes
+    keep_indices = nms(prediction['boxes'], prediction['scores'], iou_threshold)
+    
+    # Filter all prediction components
+    filtered_prediction = {
+        'boxes': prediction['boxes'][keep_indices],
+        'labels': prediction['labels'][keep_indices],
+        'scores': prediction['scores'][keep_indices],
+        'keypoints': prediction['keypoints'][keep_indices]
+    }
+    
+    return filtered_prediction
 
 def get_point_tuples(pts):
     p1 = (int(round(pts[0, 0])), int(round(pts[0, 1])))
@@ -100,6 +128,8 @@ if __name__ == '__main__':
 
         with torch.no_grad():
             prediction = model(image)[0]
+            # Optional: Apply additional NMS if needed (model already applies NMS internally)
+            prediction = apply_nms(prediction, iou_threshold=NMS_THRESHOLD)
             pass
 
         vis_prediction(image, target, prediction)
