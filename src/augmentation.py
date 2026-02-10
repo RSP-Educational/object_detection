@@ -50,28 +50,28 @@ def augment_image_numpy(image: np.ndarray) -> np.ndarray:
     image = image.copy()  # Nicht das Original verändern
     
     # --- Helligkeit ---
-    if random.random() < 0.5:
+    if random.random() < 0.3:
         factor = 0.7 + 0.6 * random.random()  # [0.7, 1.3]
         image = _aug_brithness(image, factor)
     
     # --- Kontrast ---
-    if random.random() < 0.5:
+    if random.random() < 0.3:
         factor = 0.6 + 0.8 * random.random()  # [0.6, 1.4]
         image = _aug_contrast(image, factor)
     
     # --- Sättigung ---
-    if random.random() < 0.5:
+    if random.random() < 0.3:
         factor = 0.4 + 1.2 * random.random()  # [0.4, 1.6]
         image = _aug_saturation(image, factor)
     
     # --- Hue (Farbton) ---
-    if random.random() < 0.5:
-        shift = -0.4 + 0.8 * random.random()  # [-0.4, 0.4]
+    if random.random() < 0.3:
+        shift = -0.2 + 0.4 * random.random()  # [-0.2, 0.2]
         image = _aug_hue(image, shift)
     
     # --- Schärfe ---
-    if random.random() < 0.5:
-        factor = 0.2 + 0.4 * random.random()  # [0.2, 0.6]
+    if random.random() < 0.3:
+        factor = 0.1 + 0.3 * random.random()  # [0.1, 0.4]
         image = _aug_sharpness(image, factor)
     
     return image
