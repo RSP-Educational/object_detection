@@ -206,12 +206,12 @@ from torch.utils.data import DataLoader
 import multiprocessing as mp
 
 # TRAINING SETUP
-RUN_ID              = "ObjectDataset/FasterRCNN_512_fixed"
+RUN_ID              = "ObjectDataset/FasterRCNN_800"
 EPOCHS              = 60  # Erhöhe Epochen - der Loss sinkt noch!
 LEARNING_RATE       = 2e-4  # Leicht erhöht für schnelleres Keypoint-Learning
 MIN_LEARNING_RATE   = 1e-6
 BATCH_SIZE          = 2
-IMAGE_SIZE          = (512, 512)#(1024, 1024)
+IMAGE_SIZE          = (800, 800)  # Optimal für Keypoint-Präzision (näher am COCO-Pretrained-Modell)
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
 WARMUP_ITERARTIONS  = 800
 BATCHES_PER_EPOCH   = 500000
