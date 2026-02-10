@@ -18,6 +18,8 @@ CLASS_LABELS = [
     'Bottle Opener',
     'Cuboid'
 ]
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
 
 def load_record(ann_file: str) -> dict:
     """Lädt eine Annotationsdatei im COCO-Format und gibt die Daten als Dictionary zurück."""
@@ -157,14 +159,14 @@ class ObjectDataset(Dataset):
        
         self.split = split
         self.annotations = load_annotations(split=split)
-        self.NUM_CLASSES = max([max(ann['classes'] + 1) for ann in self.annotations]) + 1 # inner +1 because index-based; outer +1 because background class = 0
+        self.NUM_CLASSES = 4+1#max([max(ann['classes'] + 1) for ann in self.annotations]) + 1 # inner +1 because index-based; outer +1 because background class = 0
         self.NUM_KEYPOINTS = self.annotations[0]['points'].shape[0]
         self.return_filename = return_filename
 
         self.image_size = image_size
         self.normalize = torchvision.transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], 
-            std=[0.229, 0.224, 0.225]
+            mean=IMAGENET_MEAN, 
+            std=IMAGENET_STD
         )
 
     def __len__(self):

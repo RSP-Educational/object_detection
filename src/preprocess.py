@@ -1,7 +1,6 @@
 from pathlib import Path
 if __name__ == "__main__":
     import sys
-
     sys.path.append(str(Path(__file__).parent.parent))
 
 import cv2 as cv
@@ -134,6 +133,11 @@ def adjust_image_proportions(dataset_directory:str, target_prop:float=3264/4896,
             prog.update((img_idx + 1) / len(JPG_files))        
 
             img_org = cv.imread(JPG_files[img_idx])
+            h, w = img_org.shape[:2]
+            if max(h, w) > 1500:
+                f = 1500 / max(h, w)
+                img_org = cv.resize(img_org, (0, 0), fx=f, fy=f)
+
             img_new = img_org.copy()
 
             h, w = img_new.shape[:2]
@@ -143,7 +147,9 @@ def adjust_image_proportions(dataset_directory:str, target_prop:float=3264/4896,
 
     dataset_directory = Path(dataset_directory)
 
-    JPG_files = sorted(glob(str(dataset_directory / '**' / '*.JPG')))
+    JPG_files = []
+    for split in splits:
+        JPG_files.extend(list(sorted(glob(str(dataset_directory / split / '*.JPG')))))
     img_idx = -1
     offset = 0
 
@@ -165,10 +171,10 @@ def adjust_image_proportions(dataset_directory:str, target_prop:float=3264/4896,
 
         key = render(img_org, img_new, offset, JPG_files[img_idx])
 
-        if key in [0, 2]:    # arrow up or left
+        if key == ord('1'):    # 1
             offset -= 10
             img_new = cut_img(img_org, target_prop, offset)
-        elif key in [1, 3]:  # arrow down or right
+        elif key == ord('2'):  # 2
             offset += 10
             img_new = cut_img(img_org, target_prop, offset)
         elif key == ord('n'):

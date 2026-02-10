@@ -69,10 +69,14 @@ class Run:
             self.data = checkpoint['data']
             self.global_iteration = checkpoint['global_iteration']
             self.epoch = checkpoint['epoch']
-            best_val_loss = min(self.get_values('loss', 'val'))
+            if 'parameters' in checkpoint:
+                for key in checkpoint['parameters']:
+                    setattr(model, key, checkpoint['parameters'][key])
+            best_val_loss = min(self._get_epoch_mean_values('loss', 'val', return_epochs=False))
+
             print(f"✓ Loaded checkpoint from epoch {self.epoch} with val loss {best_val_loss:.4f}")
 
-    def save(self, model:nn.Module, optimizer:optim.Optimizer = None):
+    def save(self, model:nn.Module, optimizer:optim.Optimizer = None, parameters:dict = None):
         checkpoint = {
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': None if optimizer is None else optimizer.state_dict(),
@@ -80,6 +84,8 @@ class Run:
             'epoch': self.epoch,
             'global_iteration': self.global_iteration
         }
+        if parameters is not None:
+            checkpoint['parameters'] = parameters
         torch.save(checkpoint, self.checkpoint_file)
 
     def append(self, key:str, split:str, iteration:float, value:float):
@@ -106,10 +112,10 @@ class Run:
         return self.data[key][split]['value']
     
     def get_last_epoch_value(self, key, split):
-        epochs, values = self._get_epoch_mean_values(key, split)
+        values = self._get_epoch_mean_values(key, split, return_epochs=False)
         return values[-1]
     
-    def _get_epoch_mean_values(self, key:str, split:str):
+    def _get_epoch_mean_values(self, key:str, split:str, return_epochs:bool):
         epochs = np.array(self.data[key][split]['iteration'], dtype=np.int32)
         epochs_unique = np.unique(epochs)
         values = np.array(self.data[key][split]['value'], dtype=np.float32)
@@ -120,10 +126,12 @@ class Run:
             epoch_values = values[epoch_mask]
             epoch_mean = np.mean(epoch_values)
 
-            epochs_out.append(e.item())
+            epochs_out.append(e.item() + 1)
             means_out.append(epoch_mean.item())
             pass
-        return epochs_out, means_out
+        if return_epochs:
+            return epochs_out, means_out
+        return means_out
     
     def plot(self, show_cv:bool = False):
         for key in self.data:
@@ -133,7 +141,7 @@ class Run:
             for i, split in enumerate(self.data[key]):
                 x_iter = self.data[key][split]['iteration']
                 y_iter = self.data[key][split]['value']
-                x_epoch, y_epoch = self._get_epoch_mean_values(key, split)
+                x_epoch, y_epoch = self._get_epoch_mean_values(key, split, return_epochs=True)
                 l = max(l, max(x_iter))
                 plt.plot(x_iter, y_iter, color=PLOT_COLORS[i], alpha=0.4)
                 plt.plot(x_epoch, y_epoch, color=PLOT_COLORS[i], label=split, alpha=1.0)

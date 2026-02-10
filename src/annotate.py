@@ -7,16 +7,15 @@ import numpy as np
 import copy
 if __name__== '__main__':
     from constants import COLOR_DEFAULT, COLOR_TEXT, COLOR_SELECTED, COLOR_GRAY
+    from data import CLASS_LABELS
+    from visualization import draw_shape
 else:
     from src.constants import COLOR_DEFAULT, COLOR_TEXT, COLOR_SELECTED, COLOR_GRAY
+    from src.data import CLASS_LABELS
+    from src.visualization import draw_shape
 
 SKIP_ANNOTATED      = True
-CLASSES             = {
-    0: 'Bottle Opener - Inlay',
-    1: 'Bottle Opener - Cover',
-    2: 'Bottle Opener',
-    3: 'Cuboid'
-}
+
 ANNOTATION_SPLITS = [
     'train',
     'val',
@@ -25,7 +24,8 @@ ANNOTATION_SPLITS = [
 
 KEY_OPTION_IMAGES = None
 SHAPE_IMAGES = None
-DISPLAY_IMAGE_SIZE = (6*3264//20, 6*4896//20)
+#DISPLAY_IMAGE_SIZE = (6*3264//20, 6*4896//20)
+DISPLAY_IMAGE_SIZE = (5*3264//20, 5*4896//20)
 
 def on_mouse(event,x,y,flags,param):
     global mouseX,mouseY
@@ -81,7 +81,7 @@ def select_next(img, annotations, meta_info, image_files):
         anno = annotations[meta_info['anno_idx']]
         meta_info['pt_idx'] = (meta_info['pt_idx'] + 1) % len(anno['points'])
     elif meta_info['selected'] == 'class':
-        meta_info['class_idx'] = (meta_info['class_idx'] + 1) if meta_info['class_idx'] < len(CLASSES) - 1 else 0
+        meta_info['class_idx'] = (meta_info['class_idx'] + 1) if meta_info['class_idx'] < len(CLASS_LABELS) - 1 else 0
         annotations[meta_info['anno_idx']]['class'] = meta_info['class_idx']
     else:
         print(f'Unknown selection type: {meta_info["selected"]}')
@@ -104,171 +104,12 @@ def select_previous(img, annotations, meta_info, image_files):
         anno = annotations[meta_info['anno_idx']]
         meta_info['pt_idx'] = meta_info['pt_idx'] - 1 if meta_info['pt_idx'] > 0 else len(anno['points']) - 1
     elif meta_info['selected'] == 'class':
-        meta_info['class_idx'] = meta_info['class_idx'] - 1 if meta_info['class_idx'] > 0 else len(CLASSES) - 1
+        meta_info['class_idx'] = meta_info['class_idx'] - 1 if meta_info['class_idx'] > 0 else len(CLASS_LABELS) - 1
         annotations[meta_info['anno_idx']]['class'] = meta_info['class_idx']
     else:
         print(f'Unknown selection type: {meta_info["selected"]}')
     
     return img, annotations
-
-def draw_shape(img, class_idx, line_thickness, margin, draw_points=False):
-    def _outer_shape(img, r):
-        cx, cy = img.shape[1] // 2, img.shape[0] // 2
-        cv.circle(img, (cx, cy), r, COLOR_DEFAULT, line_thickness)
-
-        p1x = cx + int(round(np.sin(np.radians(0)) * 0.97 * r))
-        p1y = cy - int(round(np.cos(np.radians(0)) * 0.97 * r))
-        p2x = cx + int(round(np.sin(np.radians(0)) * 1.03 * r))
-        p2y = cy - int(round(np.cos(np.radians(0)) * 1.03 * r))
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-
-        p1x = cx + int(round(np.sin(np.radians(120)) * 0.97 * r))
-        p1y = cy - int(round(np.cos(np.radians(120)) * 0.97 * r))
-        p2x = cx + int(round(np.sin(np.radians(120)) * 1.03 * r))
-        p2y = cy - int(round(np.cos(np.radians(120)) * 1.03 * r))
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-
-        p1x = cx + int(round(np.sin(np.radians(240)) * 0.97 * r))
-        p1y = cy - int(round(np.cos(np.radians(240)) * 0.97 * r))
-        p2x = cx + int(round(np.sin(np.radians(240)) * 1.03 * r))
-        p2y = cy - int(round(np.cos(np.radians(240)) * 1.03 * r))
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-
-        if draw_points:
-            (w, h), _ = cv.getTextSize('P1', cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness*2)
-            p1x = cx + int(round(np.sin(np.radians(240)) * 1.03 * r)) - w
-            p1y = cy - int(round(np.cos(np.radians(240)) * 1.03 * r)) + h
-
-            (w, h), _ = cv.getTextSize('P2', cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness*2)
-            p2x = cx + int(round(np.sin(np.radians(120)) * 1.03 * r)) + w // 4
-            p2y = cy - int(round(np.cos(np.radians(120)) * 1.03 * r)) + h
-
-            (w, h), _ = cv.getTextSize('P3', cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness*2)
-            p3x = cx + int(round(np.sin(np.radians(0)) * 1.03 * r)) - w//2
-            p3y = cy - int(round(np.cos(np.radians(0)) * 1.03 * r)) + 3*h
-
-            cv.putText(img, 'P1', (p1x, p1y), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-            cv.putText(img, 'P2', (p2x, p2y), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-            cv.putText(img, 'P3', (p3x, p3y), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-
-    r = img.shape[1] // 2 - margin
-    txt_scale = 0.001 * img.shape[1]
-    cx, cy = img.shape[1] // 2, img.shape[0] // 2
-    class_name = CLASSES[class_idx]
-    if class_idx == 0:  # Bottle Opener - Inlay
-        _outer_shape(img, r)
-        #cv.circle(img, (cx, cy), r, COLOR_DEFAULT, line_thickness)
-        cr = int(round(0.06 * r))
-        cv.circle(img, (cx-int(round(0.7*r)), cy), cr, COLOR_DEFAULT, line_thickness)
-        cv.circle(img, (cx+int(round(0.7*r)), cy), cr, COLOR_DEFAULT, line_thickness)
-
-        cv.circle(img, (cx, cy -int(round(0.42*r))), int(round(0.52 * r)), COLOR_DEFAULT, line_thickness)
-
-        p1x = cx - int(round(0.4 * r))
-        p1y = cy + int(round(0.23 * r))
-        p2x = cx + int(round(0.4 * r))
-        p2y = p1y
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-        p1y += int(round(0.39 * r))
-        p2y = p1y
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-        p1x = cx - int(round(0.4 * r))
-        p1y = cy + int(round(0.23 * r))
-        p2x = p1x
-        p2y = p1y + int(round(0.39 * r))
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-        p1x = cx + int(round(0.4 * r))
-        p2x = p1x
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-
-        (w, h), _ = cv.getTextSize(class_name, cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness)
-        cv.putText(img, class_name, (cx -w//2, cy + int(round(0.5*r))), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-
-    elif class_idx == 1:    # Bottle Opener - Cover
-        _outer_shape(img, r)
-        #cv.circle(img, (cx, cy), r, COLOR_DEFAULT, line_thickness)
-        cr = int(round(0.14 * r))
-        cv.circle(img, (cx-int(round(0.68*r)), cy), cr, COLOR_DEFAULT, line_thickness)
-        cv.circle(img, (cx+int(round(0.68*r)), cy), cr, COLOR_DEFAULT, line_thickness)
-
-        p1 = (cx - int(round(0.4 * r)), cy + int(round(0.20 * r)))
-        p2 = (cx + int(round(0.4 * r)), p1[1])
-        p3 = (p1[0], p1[1] + int(round(0.45 * r)))
-        p4 = (p2[0], p3[1])
-
-        # top horizontal line
-        cv.line(img, p1, p2, COLOR_DEFAULT, line_thickness)
-
-        # bottom horizontal line
-        cv.line(img, p3, p4, COLOR_DEFAULT, line_thickness)
-
-        # left vertical line
-        cv.line(img, p1, p3, COLOR_DEFAULT, line_thickness)
-
-        # right vertical line
-        cv.line(img, p2, p4, COLOR_DEFAULT, line_thickness)
-
-        (w, h), _ = cv.getTextSize(class_name, cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness)
-        cv.putText(img, class_name, (cx -w//2, cy + int(round(0.5*r))), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-
-    elif class_idx == 2:  # Bottle Opener
-        _outer_shape(img, r)
-        #cv.circle(img, (cx, cy), r, COLOR_DEFAULT, line_thickness)
-        cr = int(round(0.06 * r))
-        cv.circle(img, (cx-int(round(0.7*r)), cy), cr, COLOR_DEFAULT, line_thickness)
-        cv.circle(img, (cx+int(round(0.7*r)), cy), cr, COLOR_DEFAULT, line_thickness)
-
-        cv.circle(img, (cx, cy -int(round(0.42*r))), int(round(0.52 * r)), COLOR_DEFAULT, line_thickness)
-
-        p1x = cx - int(round(0.4 * r))
-        p1y = cy + int(round(0.23 * r))
-        p2x = cx + int(round(0.4 * r))
-        p2y = p1y
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-        p1y += int(round(0.39 * r))
-        p2y = p1y
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-        p1x = cx - int(round(0.4 * r))
-        p1y = cy + int(round(0.23 * r))
-        p2x = p1x
-        p2y = p1y + int(round(0.39 * r))
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-        p1x = cx + int(round(0.4 * r))
-        p2x = p1x
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness)
-
-        (w, h), _ = cv.getTextSize(class_name, cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness)
-        cv.putText(img, class_name, (cx -w//2, cy + int(round(0.5*r))), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-
-    elif class_idx == 3:  # Cuboid
-        p1x = margin
-        p1y = img.shape[0] - margin
-        p2x = margin
-        p2y = margin
-        p3x = img.shape[1] - margin
-        p3y = img.shape[0] - margin
-        cv.line(img, (p1x, p1y), (p2x, p2y), COLOR_DEFAULT, line_thickness*2)
-        cv.line(img, (p1x, p1y), (p3x, p3y), COLOR_DEFAULT, line_thickness*2)
-
-        (w, h), baseline = cv.getTextSize(class_name, cv.FONT_HERSHEY_SIMPLEX, 5*txt_scale, line_thickness)
-        cv.putText(img, class_name, (p1x+(p3x - p1x)//2 - w//2, p1y+(p2y-p1y)//2 + baseline + h//2), cv.FONT_HERSHEY_SIMPLEX, 5 * txt_scale, COLOR_DEFAULT, line_thickness*2)
-
-        if draw_points:
-            (w, h), _ = cv.getTextSize('P1', cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness)
-            p1x = p1x + margin
-            p1y = p1y - margin
-            cv.putText(img, 'P1', (p1x, p1y), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-
-            (w, h), _ = cv.getTextSize('P2', cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness)
-            p2x = p2x + margin
-            p2y = p2y + margin
-            cv.putText(img, 'P2', (p2x, p2y), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-
-            (w, h), _ = cv.getTextSize('P3', cv.FONT_HERSHEY_SIMPLEX, txt_scale, line_thickness)
-            p3x = p3x - w
-            p3y = p3y - margin
-            cv.putText(img, 'P3', (p3x, p3y), cv.FONT_HERSHEY_SIMPLEX, txt_scale, COLOR_DEFAULT, line_thickness)
-    pass
 
 def _add_overlay(img, overlay, position, alpha=1.0):
     x, y = position
@@ -480,7 +321,7 @@ def render(img, annotations, meta_info, window_name):
         }
     if SHAPE_IMAGES is None:
         SHAPE_IMAGES = {}
-        for class_idx in CLASSES.keys():
+        for class_idx in range(len(CLASS_LABELS)):
             if class_idx == 3:  # Cuboid
                 shape_img = np.full((2*img.shape[1]//3,2*img.shape[1]//3,3), (0,0,0), np.uint8)
             else:
@@ -509,7 +350,7 @@ def render(img, annotations, meta_info, window_name):
 
     color = COLOR_SELECTED if meta_info['selected'] == 'class' else COLOR_TEXT
     class_idx = meta_info['class_idx']
-    cv.putText(img_info, f'4 - Class: {class_idx} ({CLASSES[class_idx]})', (10, py), cv.FONT_HERSHEY_SIMPLEX, txt_scale, color, txt_thickness)
+    cv.putText(img_info, f'4 - Class: {class_idx} ({CLASS_LABELS[class_idx]})', (10, py), cv.FONT_HERSHEY_SIMPLEX, txt_scale, color, txt_thickness)
     py += dy
 
     percentage = meta_info['annotated_cnt'] / meta_info['total_cnt'] * 100 if meta_info['total_cnt'] > 0 else 0.0
@@ -522,20 +363,20 @@ def render(img, annotations, meta_info, window_name):
         color_anno = COLOR_SELECTED if anno_idx == meta_info['anno_idx'] and meta_info['selected'] == 'annotation' else COLOR_DEFAULT
 
         shape_img = SHAPE_IMAGES[meta_info['class_idx']].copy()
-        if meta_info['class_idx'] in list(CLASSES.keys())[0:3]: # Bottle Opener - Inlay, Bottle Opener - Cover, Bottle Opener
+        if meta_info['class_idx'] == 3:  # Cuboid
+            #shape_img = np.full((2*img.shape[1]//3,2*img.shape[1]//3,3), (0,0,0), np.uint8)
+            src_pts = np.array([
+                [0, shape_img.shape[0]],
+                [0, 0],
+                [shape_img.shape[1], shape_img.shape[0]]
+            ])
+        else: # Bottle Opener - Inlay, Bottle Opener - Cover, Bottle Opener
             r = img.shape[1] // 3
             #shape_img = np.full((2*r,2*r,3), (0,0,0), np.uint8)
             src_pts = np.array([
                 [r+np.sin(np.radians(240)) * r, r - np.cos(np.radians(240)) * r],
                 [r+np.sin(np.radians(120)) * r, r - np.cos(np.radians(120)) * r],
                 [r, 0],
-            ])
-        elif meta_info['class_idx'] == 3:  # Cuboid
-            #shape_img = np.full((2*img.shape[1]//3,2*img.shape[1]//3,3), (0,0,0), np.uint8)
-            src_pts = np.array([
-                [0, shape_img.shape[0]],
-                [0, 0],
-                [shape_img.shape[1], shape_img.shape[0]]
             ])
 
         #draw_shape(shape_img, anno['class'], line_thickness, 0)
@@ -556,16 +397,7 @@ def render(img, annotations, meta_info, window_name):
 
         if anno_idx == meta_info['anno_idx']:
             margin = 60
-            if meta_info['class_idx'] in list(CLASSES.keys())[0:3]: # Bottle Opener - Inlay, Bottle Opener - Cover, Bottle Opener  
-                o1x = -np.sin(np.deg2rad(240)) * margin
-                o1y = +np.cos(np.deg2rad(240)) * margin
-
-                o2x = -np.sin(np.deg2rad(120)) * margin
-                o2y = +np.cos(np.deg2rad(120)) * margin
-
-                o3x = 0.
-                o3y = margin
-            elif meta_info['class_idx'] == 3:  # Cuboid
+            if meta_info['class_idx'] == 3:  # Cuboid
                 o1x = margin
                 o1y = -margin
 
@@ -574,6 +406,15 @@ def render(img, annotations, meta_info, window_name):
 
                 o3x = -margin
                 o3y = -margin
+            else: # Bottle Opener - Inlay, Bottle Opener - Cover, Bottle Opener  
+                o1x = -np.sin(np.deg2rad(240)) * margin
+                o1y = +np.cos(np.deg2rad(240)) * margin
+
+                o2x = -np.sin(np.deg2rad(120)) * margin
+                o2y = +np.cos(np.deg2rad(120)) * margin
+
+                o3x = 0.
+                o3y = margin
 
             src_pts[0, 0] += o1x
             src_pts[0, 1] += o1y
@@ -780,7 +621,7 @@ def annotate_dataset(dataset_directory):
     cv.waitKey(1)
 
 if __name__ == '__main__':
-    annotate_dataset('data')
+    annotate_dataset('data/DHSN_BottleOpener')
 
     # img = np.full((500, 800, 3), 255, np.uint8)
 

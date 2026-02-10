@@ -93,7 +93,7 @@ if __name__ == '__main__':
     )
 
     # TRAINING LOOP
-    best_loss_val = min(run.get_values('loss', 'val'))
+    best_loss_val = min(run._get_epoch_mean_values('loss', 'val', return_epochs=False))
     if np.isnan(best_loss_val):
         best_loss_val = np.inf
     for epoch in range(run.epoch, EPOCHS):
@@ -190,7 +190,15 @@ if __name__ == '__main__':
         loss_val = run.get_last_epoch_value('loss', 'val')
         if loss_val < best_loss_val:
             best_loss_val = loss_val
-            run.save(model, optimizer)
+            run.save(
+                model       = model,
+                optimizer   = optimizer,
+                parameters  = {
+                    'num_classes':      ds_train.NUM_CLASSES,
+                    'num_keypoints':    ds_train.NUM_KEYPOINTS,
+                    'image_size': IMAGE_SIZE
+                }
+            )
             print(f"✓ Saved checkpoint for epoch {run.epoch} with val loss {run.get_last_epoch_value('loss', 'val'):.4f}")
 
     print(f"\nTraining completed! Best validation loss: {best_loss_val:.4f}")
