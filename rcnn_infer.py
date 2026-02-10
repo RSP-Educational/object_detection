@@ -98,7 +98,7 @@ def vis_prediction(image, prediction, target = None, fname = None):
     pass
 
 def load_model(path:str = 'models/checkpoint.ckpt'):
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path, map_location=DEVICE)
 
     model = FasterRCNN(
         num_classes             = checkpoint['parameters']['num_classes'],

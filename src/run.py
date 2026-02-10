@@ -116,6 +116,18 @@ class Run:
         return values[-1]
     
     def _get_epoch_mean_values(self, key:str, split:str, return_epochs:bool):
+        if key not in self.data:
+            if return_epochs:
+                return [0], [np.nan]
+            return [np.nan]
+        if split not in self.data[key]:
+            if return_epochs:
+                return [0], [np.nan]
+            return [np.nan]
+        if len(self.data[key][split]) == 0:
+            if return_epochs:
+                return [0], [np.nan]
+            return [np.nan]
         epochs = np.array(self.data[key][split]['iteration'], dtype=np.int32)
         epochs_unique = np.unique(epochs)
         values = np.array(self.data[key][split]['value'], dtype=np.float32)

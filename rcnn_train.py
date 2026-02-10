@@ -31,7 +31,7 @@ BATCH_SIZE          = 2
 IMAGE_SIZE          = (800, 800)  # Optimal für Keypoint-Präzision (näher am COCO-Pretrained-Modell)
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
 WARMUP_ITERARTIONS  = 800
-BATCHES_PER_EPOCH   = 500000
+BATCHES_PER_EPOCH   = 10#500000
 PLOT_ITERATIONS     = 20
 NUM_WORKERS         = 6
 
