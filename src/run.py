@@ -60,21 +60,22 @@ class Run:
         self.epoch = 0
         self.global_iteration = 0
 
-    def load(self, model:nn.Module, optimizer:optim.Optimizer):
+    def load(self, model:nn.Module, optimizer:optim.Optimizer = None):
         if self.checkpoint_file.exists():
             checkpoint = torch.load(self.checkpoint_file, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            if optimizer is not None:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.data = checkpoint['data']
             self.global_iteration = checkpoint['global_iteration']
             self.epoch = checkpoint['epoch']
             best_val_loss = min(self.get_values('loss', 'val'))
             print(f"✓ Loaded checkpoint from epoch {self.epoch} with val loss {best_val_loss:.4f}")
 
-    def save(self, model:nn.Module, optimizer:optim.Optimizer):
+    def save(self, model:nn.Module, optimizer:optim.Optimizer = None):
         checkpoint = {
             'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
+            'optimizer_state_dict': None if optimizer is None else optimizer.state_dict(),
             'data': self.data,
             'epoch': self.epoch,
             'global_iteration': self.global_iteration
