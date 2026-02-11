@@ -111,5 +111,8 @@ class FasterRCNN(nn.Module):
             return predictions
         return predictions[0]
         
-
+    def to(self, device):
+        self.model.to(device)
+        self.device = device
+        return super().to(device)
         

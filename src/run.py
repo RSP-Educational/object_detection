@@ -62,7 +62,7 @@ class Run:
 
     def load(self, model:nn.Module, optimizer:optim.Optimizer = None):
         if self.checkpoint_file.exists():
-            checkpoint = torch.load(self.checkpoint_file, weights_only=False)
+            checkpoint = torch.load(self.checkpoint_file, weights_only=False, map_location=self.device)
             model.load_state_dict(checkpoint['model_state_dict'])
             if optimizer is not None:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
