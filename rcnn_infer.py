@@ -8,7 +8,7 @@ from src.visualization import draw_shape
 from src.constants import COLOR_RED, COLOR_TEXT, COLOR_WHITE, COLOR_BLACK, COLOR_GREEN
 
 RUN_ID              = "ObjectDataset/FasterRCNN_800"
-DATA_SOURCE         = 'camera' # 'dataset', 'camera'
+DATA_SOURCE         = 'dataset' # 'dataset', 'camera'
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
 THRESHOLD           = 0.89
 
@@ -123,7 +123,8 @@ def infer_dataset(model, split:str = 'test'):
         return_filename         = True
     )
     losses = []
-    for image, target, fname in dataset:
+    for i in range(len(dataset)):
+        image, target, fname = dataset[i]
         image_batch = image.to(DEVICE).unsqueeze(0)
         target_batch = [{k: v.to(DEVICE) for k, v in target.items()}]
 

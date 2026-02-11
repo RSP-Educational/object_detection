@@ -209,8 +209,8 @@ def plot_images_with_points(images, target_points_list, titles, pred_points_list
         if type(p_pts) == torch.Tensor:
             p_pts = p_pts.cpu().numpy()
 
-        t_pts = t_pts[:, :, :2].reshape(-1, 2)
-        p_pts = p_pts[:, :, :2].reshape(-1, 2)
+        # t_pts = t_pts[:, :, :2].reshape(-1, 2)
+        # p_pts = p_pts[:, :, :2].reshape(-1, 2)
         h, w = image.shape[:2]
         #h, w = 1, 1
         t_pts = t_pts[(t_pts[:,0]>=0) & (t_pts[:,0]<=w) & (t_pts[:,1]>=0) & (t_pts[:,1]<=h)]
