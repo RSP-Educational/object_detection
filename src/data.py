@@ -22,12 +22,13 @@ IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
 def load_record(ann_file: str) -> dict:
-    """Lädt eine Annotationsdatei im COCO-Format und gibt die Daten als Dictionary zurück."""
+    """Lädt eine Annotationsdatei und gibt die Daten als Dictionary zurück."""
     img_file = ann_file.replace(".json", ".JPG")
 
     with open(ann_file, 'r') as f:
         annotations = json.load(f)
-    points = np.array([pt for obj in annotations for pt in obj['points']])
+    points = np.array([[[obj['p1x'], obj['p1y']], [obj['p2x'], obj['p2y']], [obj['p3x'], obj['p3y']]] for obj in annotations])
+    points = points.reshape(-1, 2)
     classes = np.array([obj['class'] for obj in annotations])
 
     img = cv.imread(img_file) / 255.0  # Normalisiere auf [0, 1]

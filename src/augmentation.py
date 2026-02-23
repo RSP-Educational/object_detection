@@ -1,6 +1,17 @@
 import numpy as np
 import cv2 as cv
 import random
+from datasets import load_dataset
+
+BACKGROUNDS = []
+if len(BACKGROUNDS) == 0:
+    ds_background = load_dataset("SchulzR97/backgrounds")
+
+    BACKGROUNDS = []
+    for record in ds_background["train"]:
+        bg_image = np.array(record["image"])
+        #bg_image = cv.cvtColor(bg_image, cv.COLOR_RGB2BGR)  # PIL (RGB) → OpenCV (BGR)
+        BACKGROUNDS.append(bg_image)
 
 # ----------------- Bild-Augmentationen -----------------
 def _aug_brithness(image: np.ndarray, factor: float) -> np.ndarray:
@@ -221,3 +232,49 @@ def augment_rotate(img, keypoints, angle_shift, scale_factor, p:float = 0.5):
 
     img_rotated, keypoints_rotated = _augment_rotate(img, keypoints, angle, scale)
     return img_rotated, keypoints_rotated
+
+def replace_background(image: np.ndarray):
+    """
+    Replace background in specified hue range with random images from the specified directory.
+    """
+
+
+    # --- Hintergrundmaske erstellen ---
+    hsv = cv.cvtColor((image * 255).astype(np.uint8), cv.COLOR_BGR2HSV)
+    # Graubereiche haben niedrige Sättigung (Saturation)
+    lower_hue = np.array([0, 0, 0])  # Hue: beliebig, Saturation: niedrig, Value: beliebig
+    upper_hue = np.array([180, 35, 255])  # Grauwerte haben Sättigung < 50
+    mask = cv.inRange(hsv, lower_hue, upper_hue)
+    mask_inv = cv.bitwise_not(mask)
+
+    # --- Zufälliges Hintergrundbild laden ---
+    bg_image = random.choice(BACKGROUNDS)
+    bg_image = cv.resize(bg_image, (image.shape[1], image.shape[0]))
+    bg_image = bg_image.astype(np.float32) / 255.0
+
+    # --- Hintergrund ersetzen ---
+    fg = cv.bitwise_and(image, image, mask=mask_inv)
+    bg = cv.bitwise_and(bg_image, bg_image, mask=mask)
+    combined = fg + bg
+
+    return combined
+
+if __name__ == "__main__":
+    import visualization as vis
+    import data as data
+
+    while True:
+        sample_name = "images/samples/P1030157.json"
+
+        img, points, _ = data.load_record(sample_name)
+
+        img_bg = replace_background(img.copy())
+
+        vis.plot_images_with_points(
+            [img, img_bg],
+            target_points_list=[points]*2,
+            titles=[
+                "Original",
+                "Hintergrund ersetzt"
+            ]
+        )

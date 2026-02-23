@@ -209,12 +209,16 @@ def plot_images_with_points(images, target_points_list, titles, pred_points_list
         if type(p_pts) == torch.Tensor:
             p_pts = p_pts.cpu().numpy()
 
+        # if image.dtype == np.float32:
+        #     image = (image * 255).astype(np.uint8)
+
         # t_pts = t_pts[:, :, :2].reshape(-1, 2)
         # p_pts = p_pts[:, :, :2].reshape(-1, 2)
         h, w = image.shape[:2]
         #h, w = 1, 1
-        t_pts = t_pts[(t_pts[:,0]>=0) & (t_pts[:,0]<=w) & (t_pts[:,1]>=0) & (t_pts[:,1]<=h)]
-        p_pts = p_pts[(p_pts[:,0]>=0) & (p_pts[:,0]<=w) & (p_pts[:,1]>=0) & (p_pts[:,1]<=h)]
+        test = (t_pts[:,0]>=0) & (t_pts[:,0]<=w) & (t_pts[:,1]>=0) & (t_pts[:,1]<=h)
+        t_pts = t_pts[(t_pts[:, 0]>=0) & (t_pts[:, 0]<=w) & (t_pts[:, 1]>=0) & (t_pts[:, 1]<=h)]
+        p_pts = p_pts[(p_pts[:, 0]>=0) & (p_pts[:, 0]<=w) & (p_pts[:, 1]>=0) & (p_pts[:, 1]<=h)]
         plt.subplot(rows, columns, i + 1)
         plt.imshow(image)
         t_pts_x = t_pts[:, 0] #* w

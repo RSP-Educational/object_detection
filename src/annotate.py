@@ -81,8 +81,8 @@ def select_next(img, annotations, meta_info, image_files):
         anno = annotations[meta_info['anno_idx']]
         meta_info['pt_idx'] = (meta_info['pt_idx'] + 1) % len(anno['points'])
     elif meta_info['selected'] == 'class':
-        meta_info['class_idx'] = (meta_info['class_idx'] + 1) if meta_info['class_idx'] < len(CLASS_LABELS) - 1 else 0
-        annotations[meta_info['anno_idx']]['class'] = meta_info['class_idx']
+        anno_idx = meta_info['anno_idx']
+        annotations[anno_idx]['class'] = annotations[anno_idx]['class'] + 1 if annotations[anno_idx]['class'] < len(CLASS_LABELS) - 1 else 0
     else:
         print(f'Unknown selection type: {meta_info["selected"]}')
     
@@ -104,8 +104,8 @@ def select_previous(img, annotations, meta_info, image_files):
         anno = annotations[meta_info['anno_idx']]
         meta_info['pt_idx'] = meta_info['pt_idx'] - 1 if meta_info['pt_idx'] > 0 else len(anno['points']) - 1
     elif meta_info['selected'] == 'class':
-        meta_info['class_idx'] = meta_info['class_idx'] - 1 if meta_info['class_idx'] > 0 else len(CLASS_LABELS) - 1
-        annotations[meta_info['anno_idx']]['class'] = meta_info['class_idx']
+        anno_idx = meta_info['anno_idx']
+        annotations[anno_idx]['class'] = annotations[anno_idx]['class'] - 1 if annotations[anno_idx]['class'] > 0 else len(CLASS_LABELS) - 1
     else:
         print(f'Unknown selection type: {meta_info["selected"]}')
     
@@ -362,8 +362,8 @@ def render(img, annotations, meta_info, window_name):
     for anno_idx, anno in enumerate(annotations):
         color_anno = COLOR_SELECTED if anno_idx == meta_info['anno_idx'] and meta_info['selected'] == 'annotation' else COLOR_DEFAULT
 
-        shape_img = SHAPE_IMAGES[meta_info['class_idx']].copy()
-        if meta_info['class_idx'] == 3:  # Cuboid
+        shape_img = SHAPE_IMAGES[anno['class']].copy()
+        if anno['class'] == 3:  # Cuboid
             #shape_img = np.full((2*img.shape[1]//3,2*img.shape[1]//3,3), (0,0,0), np.uint8)
             src_pts = np.array([
                 [0, shape_img.shape[0]],
@@ -397,7 +397,7 @@ def render(img, annotations, meta_info, window_name):
 
         if anno_idx == meta_info['anno_idx']:
             margin = 60
-            if meta_info['class_idx'] == 3:  # Cuboid
+            if anno['class'] == 3:  # Cuboid
                 o1x = margin
                 o1y = -margin
 

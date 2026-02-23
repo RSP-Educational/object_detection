@@ -8,7 +8,7 @@ from src.visualization import draw_shape
 from src.constants import COLOR_RED, COLOR_TEXT, COLOR_WHITE, COLOR_BLACK, COLOR_GREEN
 
 RUN_ID              = "ObjectDataset/FasterRCNN_800"
-DATA_SOURCE         = 'dataset' # 'dataset', 'camera'
+DATA_SOURCE         = 'camera' # 'dataset', 'camera'
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
 THRESHOLD           = 0.89
 
