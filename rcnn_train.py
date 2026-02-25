@@ -9,31 +9,18 @@ from src.run import Run
 from torch.utils.data import DataLoader
 import multiprocessing as mp
 
-# ds_train = ObjectDataset(split="train")
-# imgs, points, titles = [], [], []
-# for i in np.random.randint(0, len(ds_train), size=6):
-#     img, target = ds_train[i]
-
-#     imgs.append(img)
-#     points.append(target["keypoints"])
-#     titles.append("test")
-    
-#vis.plot_images_with_points(imgs, points, titles)
-pass
-
-
 # TRAINING SETUP
 RUN_ID              = "ObjectDataset/FasterRCNN_800"
-EPOCHS              = 60  # Erhöhe Epochen - der Loss sinkt noch!
-LEARNING_RATE       = 2e-4  # Leicht erhöht für schnelleres Keypoint-Learning
+EPOCHS              = 80
+LEARNING_RATE       = 2e-4
 MIN_LEARNING_RATE   = 1e-6
 BATCH_SIZE          = 2
-IMAGE_SIZE          = (800, 800)  # Optimal für Keypoint-Präzision (näher am COCO-Pretrained-Modell)
+IMAGE_SIZE          = (800, 800)
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
 WARMUP_ITERARTIONS  = 800
 BATCHES_PER_EPOCH   = 500000
 PLOT_ITERATIONS     = 20
-NUM_WORKERS         = 6
+NUM_WORKERS         = 6#6
 
 if __name__ == '__main__':
     mp.set_start_method("spawn", force=True)  # safer with OpenCV
@@ -48,7 +35,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(
         dataset             = ds_train,
         batch_size          = BATCH_SIZE,
-        sampler             = train_sampler,
+        #sampler             = train_sampler,
+        shuffle             = True,
         num_workers         = NUM_WORKERS,
         persistent_workers  = NUM_WORKERS > 0,
         pin_memory          = True,

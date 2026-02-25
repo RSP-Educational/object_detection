@@ -93,27 +93,9 @@ def publish_dataset(dataset_directory, splits = ['train', 'val', 'test']):
     Args:
         dataset_directory (str or Path): Path to the dataset directory.
     """
-    def _login():
-        from huggingface_hub import login
-        import getpass
-
-        token_file = Path(dataset_directory) / '.hf_token'
-        if token_file.exists():
-            with open(token_file, 'rb') as f:
-                token = f.read().strip()
-            try:
-                login(token.decode())
-                return
-            except Exception as e:
-                print(f"Stored HuggingFace token is invalid: {e}")
-        token = getpass.getpass("Enter your HuggingFace token: ")
-        login(token)
-        with open(token_file, 'wb') as f:
-            f.write(token.encode())
-
     from huggingface_hub import list_repo_files, create_commit, CommitOperationAdd
-
-    _login()
+    import src.huggingface as _hf
+    _hf.login()
 
     # upload annotations and images
     repo_files = list_repo_files(REPO_ID, repo_type='dataset')
@@ -146,6 +128,15 @@ def publish_dataset(dataset_directory, splits = ['train', 'val', 'test']):
     pass
 
 class ObjectDataset(Dataset):
+    """
+    PyTorch Dataset for Object Detection with Keypoint R-CNN.
+    Each item is a tuple (image, target) where:
+    - image: Tensor of shape [3, H, W], normalized with ImageNet mean/std
+    - target: Dictionary with keys:
+        - 'boxes': Tensor of shape [N, 4] with bounding box coordinates (xmin, ymin, xmax, ymax)
+        - 'keypoints': Tensor of shape [N, K, 3] with keypoint coordinates and visibility (x, y, visibility)
+        - 'labels': Tensor of shape [N] with class labels (integers, background=0)
+    """
     CLASS_LABELS = CLASS_LABELS
 
     def __init__(
@@ -154,13 +145,22 @@ class ObjectDataset(Dataset):
             image_size:Tuple[int, int]=(1024, 1024),
             return_filename:bool = False
         ):
+        """
+        Args:
+            split: str
+                Datensatz-Split, z.B. "train", "val", "test"
+            image_size: Tuple[int, int]
+                Zielgröße der Bilder (width, height)
+            return_filename: bool
+                Whether to return the filename along with the image and target
+        """
         super().__init__()
 
         assert split in ["train", "val", "test"], f"Split '{split}' is invalid. Expected 'train', 'val' or 'test'."
        
         self.split = split
         self.annotations = load_annotations(split=split)
-        self.NUM_CLASSES = 4+1#max([max(ann['classes'] + 1) for ann in self.annotations]) + 1 # inner +1 because index-based; outer +1 because background class = 0
+        self.NUM_CLASSES = 4+1  # 4 classes + background
         self.NUM_KEYPOINTS = self.annotations[0]['points'].shape[0]
         self.return_filename = return_filename
 
@@ -187,45 +187,44 @@ class ObjectDataset(Dataset):
             keypoints = ann["points"]
 
             if self.split == "train":
-                img, keypoints = aug.augment_perspective(img, keypoints, distortion=0.05, p=0.3)
-                img, keypoints = aug.augment_rotate(img, keypoints, angle_shift=10, scale_factor=0.05, p=0.3)
+                img, keypoints = aug.augment_perspective(img, keypoints, distortion=0.10, p=0.4)
+                img, keypoints = aug.augment_rotate(img, keypoints, angle_shift=10, scale_factor=0.2, p=0.4)
                 img = aug.augment_image_numpy(img)
 
             boxes = []
             N_obj = keypoints.shape[0] // 3
             keypoints_formatted = np.zeros((N_obj, 3, 3))
             
-            
-            # Konvertiere relative Koordinaten in absolute Pixelkoordinaten
+            # Convert keypoints to absolute pixel coordinates and compute bounding boxes with margin
             img_height, img_width = self.image_size[1], self.image_size[0]
             
             for i, kpts in enumerate(keypoints.copy().reshape(N_obj, 3, 2)):
                 # Skaliere Keypoints auf absolute Pixelkoordinaten
                 kpts_abs = kpts.copy()
-                kpts_abs[:, 0] *= img_width   # x-Koordinaten
-                kpts_abs[:, 1] *= img_height  # y-Koordinaten
+                kpts_abs[:, 0] *= img_width   # x coordinates
+                kpts_abs[:, 1] *= img_height  # y coordinates
                 
-                # Berechne Bounding Box aus den Keypoints (in Pixelkoordinaten)
-                # WICHTIG: Margin proportional zur Bildgröße für bessere Generalisierung
-                # und um sicherzustellen, dass Keypoints nach Augmentation nicht abgeschnitten werden
-                margin_ratio = 0.15  # 15% der Keypoint-Spanne als Margin
+                # Compute bounding box from keypoints (in pixel coordinates)
+                # IMPORTANT: Margin proportional to image size for better generalization
+                # and to ensure keypoints are not clipped after augmentation
+                margin_ratio = 0.15  # 15% of keypoint span as margin
                 kpt_width = kpts_abs[:, 0].max() - kpts_abs[:, 0].min()
                 kpt_height = kpts_abs[:, 1].max() - kpts_abs[:, 1].min()
-                margin_x = max(30, kpt_width * margin_ratio)  # Minimum 30 Pixel
+                margin_x = max(30, kpt_width * margin_ratio)  # Minimum 30 pixels
                 margin_y = max(30, kpt_height * margin_ratio)
                 
                 xmin, xmax = kpts_abs[:, 0].min() - margin_x, kpts_abs[:, 0].max() + margin_x
                 ymin, ymax = kpts_abs[:, 1].min() - margin_y, kpts_abs[:, 1].max() + margin_y
                 
-                # Clip auf Bildgrenzen
+                # Clip to image boundaries
                 xmin, ymin = max(0, xmin), max(0, ymin)
                 xmax, ymax = min(img_width, xmax), min(img_height, ymax)
                 
                 boxes.append([xmin, ymin, xmax, ymax])
                 
-                # Formatiere Keypoints für Keypoint R-CNN: [K, 3] wobei 3 = (x, y, visibility)
-                # visibility: 0 = nicht annotiert, 1 = annotiert aber nicht sichtbar, 2 = annotiert und sichtbar
-                kpts_with_visibility = np.concatenate([kpts_abs, np.ones((3, 1)) * 2], axis=1)  # alle Keypoints sind sichtbar
+                # Format keypoints for Keypoint R-CNN: [K, 3] where 3 = (x, y, visibility)
+                # visibility: 0 = not annotated, 1 = annotated but not visible, 2 = annotated and visible
+                kpts_with_visibility = np.concatenate([kpts_abs, np.ones((3, 1)) * 2], axis=1)  # all keypoints are visible
                 keypoints_formatted[i] = kpts_with_visibility
 
             img = torch.tensor(img).permute(2, 0, 1).float()
@@ -233,7 +232,7 @@ class ObjectDataset(Dataset):
 
             target = {
                 "boxes": torch.tensor(boxes).float(),
-                "keypoints": torch.tensor(keypoints_formatted).float(),  # Shape: [N, 3, 3] für N Objekte mit je 3 Keypoints
+                "keypoints": torch.tensor(keypoints_formatted).float(),  # Shape: [N, 3, 3] for N objects with 3 keypoints each
                 "labels": torch.tensor(ann["classes"], dtype=torch.int64) + 1  # +1, because background class = 0
             }
 
@@ -247,10 +246,13 @@ class ObjectDataset(Dataset):
         return tuple(zip(*batch))
     
     def get_weighted_sampler(self):
-        """Erstellt Sampler basierend auf der seltensten Klasse pro Bild"""
+        """
+        Computes a weighted random sampler to address class imbalance in the dataset.
+        The weight for each sample is determined by the inverse frequency of its class labels.
+        """
         from collections import Counter
         
-        # Zähle Objekte pro Klasse
+        # Count objects per class
         class_counts = Counter()
         for ann in self.annotations:
             for label in ann['classes']:
@@ -258,7 +260,7 @@ class ObjectDataset(Dataset):
         
         print(f"\nClass distribution: {dict(class_counts)}")
         
-        # Berechne Gewichte (inverse frequency)
+        # Compute weights (inverse frequency)
         total = sum(class_counts.values())
         class_weights = {}
         for label, count in class_counts.items():
@@ -266,11 +268,11 @@ class ObjectDataset(Dataset):
         
         print(f"Class weights: {class_weights}")
         
-        # Jedes Bild bekommt das HÖCHSTE Gewicht seiner Klassen (meistens sowieso nur eine Klasse pro Bild)
+        # Each image gets the HIGHEST weight of its classes (usually only one class per image)
         sample_weights = []
         for ann in self.annotations:
             labels = ann['classes']
-            # Nutze die seltenste Klasse im Bild
+            # Use the rarest class in the image
             weights = [class_weights[label] for label in labels]
             sample_weights.append(max(weights))
         

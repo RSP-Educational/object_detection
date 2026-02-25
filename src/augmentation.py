@@ -15,23 +15,59 @@ if len(BACKGROUNDS) == 0:
 
 # ----------------- Bild-Augmentationen -----------------
 def _aug_brithness(image: np.ndarray, factor: float) -> np.ndarray:
-    """Ändert die Helligkeit des Bildes."""
+    """
+    Changes the brightness of the image by multiplying pixel values with a factor.
+    Args:
+    image: np.ndarray
+        Input image in HWC format with values in [0, 1].
+    factor: float
+        Brightness factor. Values > 1 increase brightness, values < 1 decrease brightness.
+    Returns:
+        np.ndarray: Brightness-adjusted image in the same format as the input image.
+    """
     return np.clip(image * factor, 0, 1)
 
 def _aug_contrast(image: np.ndarray, factor: float) -> np.ndarray:
-    """Ändert den Kontrast des Bildes."""
+    """
+    Changes the contrast of the image by scaling pixel values around the mean.
+    Args:
+        image: np.ndarray
+            Input image in HWC format with values in [0, 1].
+        factor: float
+            Contrast factor. Values > 1 increase contrast, values < 1 decrease contrast.
+    Returns:
+        np.ndarray: Contrast-adjusted image in the same format as the input image.
+    """
     mean = image.mean(axis=(0, 1), keepdims=True)
     return np.clip((image - mean) * factor + mean, 0, 1)
 
 def _aug_saturation(image: np.ndarray, factor: float) -> np.ndarray:
-    """Ändert die Sättigung des Bildes."""
+    """
+    Changes the saturation of the image.
+    Args:
+        image: np.ndarray
+            Input image in HWC format with values in [0, 1].
+        factor: float
+            Saturation factor. Values > 1 increase saturation, values < 1 decrease saturation.
+    Returns:
+        np.ndarray: Saturation-adjusted image in the same format as the input image.
+    """
     gray = cv.cvtColor((image * 255).astype(np.uint8), cv.COLOR_BGR2GRAY)
     gray = gray.astype(np.float32) / 255.0
     gray = np.stack([gray, gray, gray], axis=-1)
     return np.clip(gray + factor * (image - gray), 0, 1)
 
 def _aug_hue(image: np.ndarray, shift: float) -> np.ndarray:
-    """Ändert den Farbton des Bildes."""
+    """
+    Changes the hue of the image by shifting the hue channel in HSV color space.
+    Args:
+        image: np.ndarray
+            Input image in HWC format with values in [0, 1].
+        shift: float
+            Hue shift factor. Values in [-1, 1], where 1 corresponds to a full 180° shift in hue.
+    Returns:
+        np.ndarray: Hue-adjusted image in the same format as the input image.
+    """
     img_uint8 = (image * 255).astype(np.uint8)
     hsv = cv.cvtColor(img_uint8, cv.COLOR_BGR2HSV).astype(np.float32)
     hsv[:, :, 0] = (hsv[:, :, 0] + shift * 180) % 180  # Hue ist 0-180 in OpenCV
@@ -39,7 +75,16 @@ def _aug_hue(image: np.ndarray, shift: float) -> np.ndarray:
     return cv.cvtColor(hsv, cv.COLOR_HSV2BGR).astype(np.float32) / 255.0
 
 def _aug_sharpness(image: np.ndarray, factor: float) -> np.ndarray:
-    """Ändert die Schärfe des Bildes."""
+    """
+    Changes the sharpness of the image by blending it with a blurred version of itself.
+    Args:
+        image: np.ndarray
+            Input image in HWC format with values in [0, 1].
+        factor: float
+            Sharpness factor. Values > 1 increase sharpness, values < 1 decrease sharpness.
+    Returns:
+        np.ndarray: Sharpness-adjusted image in the same format as the input image.
+    """
     w, h = image.shape[1], image.shape[0]
     ksize = int(min(w, h) / 60) | 1  # ungerade Zahl
     min_ksize = 0
@@ -49,53 +94,92 @@ def _aug_sharpness(image: np.ndarray, factor: float) -> np.ndarray:
     blurred = np.clip(blurred, 0, 1)
     return blurred
 
-def augment_image_numpy(image: np.ndarray) -> np.ndarray:
+def augment_image_numpy(
+        image: np.ndarray,
+        p_brightness:float = 0.5,
+        p_contrast:float = 0.5,
+        p_saturation:float = 0.5,
+        p_hue:float = 0.5,
+        p_sharpness:float = 0.5,
+        f_brightness:float = 0.3,
+        f_contrast:float = 0.4,
+        f_saturation:float = 0.6,
+        f_hue:float = 0.4,
+        f_sharpness:float = 0.3
+    ) -> np.ndarray:
     """
-    Augmentiert ein Bild (HWC, float32, [0,1])
+    Augment an image (HWC, float32, [0,1])
 
     Args:
-        image (np.ndarray): Eingabebild im Format HWC mit Werten im Bereich [0, 1].
+        image: np.ndarray
+            Input image with format HWC and values in the range [0, 1].
+        p_brightness, p_contrast, p_saturation, p_hue, p_sharpness: float
+            Probabilities for applying the respective augmentation.
+        f_brightness, f_contrast, f_saturation, f_hue, f_sharpness: float
+            Factors controlling the strength of the respective augmentation.
     Returns:
-        np.ndarray: Augmentiertes Bild im gleichen Format wie das Eingabebild.
+        np.ndarray: Augmented image in the same format as the input image.
     """
-    image = image.copy()  # Nicht das Original verändern
+    image = image.copy()  # Do not modify the original
     
-    # --- Helligkeit ---
-    if random.random() < 0.3:
-        factor = 0.7 + 0.6 * random.random()  # [0.7, 1.3]
+    # --- Brightness ---
+    if random.random() < p_brightness:
+        factor = 1.0 - f_brightness + 2 * f_brightness * random.random()
         image = _aug_brithness(image, factor)
     
-    # --- Kontrast ---
-    if random.random() < 0.3:
-        factor = 0.6 + 0.8 * random.random()  # [0.6, 1.4]
+    # --- Contrast ---
+    if random.random() < p_contrast:
+        factor = 1.0 - f_contrast + 2 * f_contrast * random.random()
         image = _aug_contrast(image, factor)
     
-    # --- Sättigung ---
-    if random.random() < 0.3:
-        factor = 0.4 + 1.2 * random.random()  # [0.4, 1.6]
+    # --- Saturation ---
+    if random.random() < p_saturation:
+        factor = 1.0 - f_saturation + 2 * f_saturation * random.random()
         image = _aug_saturation(image, factor)
     
-    # --- Hue (Farbton) ---
-    if random.random() < 0.3:
-        shift = -0.2 + 0.4 * random.random()  # [-0.2, 0.2]
+    # --- Hue ---
+    if random.random() < p_hue:
+        shift = -f_hue + 2 * f_hue * random.random()
         image = _aug_hue(image, shift)
     
-    # --- Schärfe ---
-    if random.random() < 0.3:
-        factor = 0.1 + 0.3 * random.random()  # [0.1, 0.4]
+    # --- Sharpness ---
+    if random.random() < p_sharpness:
+        factor = 0.05 + f_sharpness * random.random()
         image = _aug_sharpness(image, factor)
     
     return image
 
-# ----------------- Perspektivische Verzerrung -----------------
+# ----------------- Perspective Distortion -----------------
 def augment_perspective(image:np.ndarray, keypoints:np.ndarray, distortion=0.1, p:float=0.5):
+    """
+    Applies a random perspective transformation to the image and keypoints.
+    Args:
+        image: np.ndarray
+            Input image in HWC format with values in [0, 1].
+        keypoints: np.ndarray
+            Keypoints associated with the image, shape (N, 2), values in [0, 1].
+        distortion: float
+            Maximum distortion factor (0 to 1).
+        p: float
+            Probability of applying the perspective transformation.
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Transformed image and keypoints.
+    """
     def _random_perspective_matrix(w, h, distortion=0.1):
         """
-        w, h: Bildbreite, -höhe
-        distortion: max. relative Verschiebung (z.B. 0.1 = 10%)
+        Generates a random perspective transformation matrix.
+        Args:
+            w: int
+                Width of the image
+            h: int
+                Height of the image
+            distortion: float
+                Maximum distortion factor (0 to 1)
+        Returns:
+            np.ndarray: 3x3 perspective transformation matrix
         """
 
-        # Originale Bild-Ecken
+        # Original image corners
         src = np.float32([
             [0, 0],
             [w - 1, 0],
@@ -169,7 +253,7 @@ def augment_perspective(image:np.ndarray, keypoints:np.ndarray, distortion=0.1, 
 
     return image_warped, keypoints_warped
 
-# ----------------- Rotation und Skalierung -----------------
+# ----------------- Rotation and Scaling -----------------
 def _augment_rotate(img, keypoints, angle, scale):
     def rotate_keypoints_relative(
         keypoints_rel: np.ndarray,  # shape (N, 2), values in [0,1]
@@ -236,6 +320,11 @@ def augment_rotate(img, keypoints, angle_shift, scale_factor, p:float = 0.5):
 def replace_background(image: np.ndarray):
     """
     Replace background in specified hue range with random images from the specified directory.
+    Args:
+    image: np.ndarray
+        Input image in HWC format with values in [0, 1].
+    Returns:
+        np.ndarray: Image with replaced background in the same format as the input image.
     """
 
 

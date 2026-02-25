@@ -6,11 +6,13 @@ from src.data import ObjectDataset, IMAGENET_MEAN, IMAGENET_STD
 from src.model import FasterRCNN
 from src.visualization import draw_shape
 from src.constants import COLOR_RED, COLOR_TEXT, COLOR_WHITE, COLOR_BLACK, COLOR_GREEN
+import src.huggingface as _hf
 
 RUN_ID              = "ObjectDataset/FasterRCNN_800"
-DATA_SOURCE         = 'camera' # 'dataset', 'camera'
+MODEL_SOURCE        = 'huggingface' # 'run', 'huggingface'    
+DATA_SOURCE         = 'dataset' # 'dataset', 'camera'
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
-THRESHOLD           = 0.89
+THRESHOLD           = 0.85#0.89
 
 COLOR_TARGET        = COLOR_RED
 COLOR_PREDICTION    = COLOR_GREEN
@@ -97,7 +99,7 @@ def vis_prediction(image, prediction, target = None, fname = None):
     cv.imshow('Preview', image)
     pass
 
-def load_model(path:str = 'models/checkpoint.ckpt'):
+def load_model_run(path:str = 'models/checkpoint.ckpt'):
     checkpoint = torch.load(path, map_location=DEVICE)
 
     model = FasterRCNN(
@@ -112,6 +114,31 @@ def load_model(path:str = 'models/checkpoint.ckpt'):
     model.num_classes = checkpoint['parameters']['num_classes']
     model.num_keypoints = checkpoint['parameters']['num_keypoints']
     model.image_size = checkpoint['parameters']['image_size']
+
+    return model
+
+def load_model_hf(
+        publish_name:str, 
+        repo_id:str = "SchulzR97/FasterRCNN", 
+        force_download:bool = False, 
+        num_classes:int = 5,
+        num_keypoints:int = 3,
+        image_size:tuple = (800, 800)
+    ):
+    state_dict = _hf.load_state_dict(publish_name=publish_name, repo_id=repo_id, force_download=force_download)
+
+    model = FasterRCNN(
+        num_classes             = num_classes,
+        num_keypoints           = num_keypoints,
+        disable_box_regression  = False
+    ).to(DEVICE)
+
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    model.num_classes = num_classes
+    model.num_keypoints = num_keypoints
+    model.image_size = image_size
 
     return model
 
@@ -134,8 +161,8 @@ def infer_dataset(model, split:str = 'test'):
             loss = sum(loss for loss in loss_dict.values())
             losses.append(loss)
         prediction = model.predict(image)
-        vis_prediction(image, prediction, target, f"{fname}, Loss={loss:0.4f}")
-        cv.waitKey()
+        vis_prediction(image, prediction, target, f"{i+1}/{len(dataset)} ({(i+1)/len(dataset):0.0%}) {fname}, Loss={loss:0.3f} ({sum(losses)/len(losses):0.3f})")
+        cv.waitKey(1000)
     print(f"=== Evaluated {len(dataset)} {split} images. Overall loss: {sum(losses)/len(losses):0.6f} ===")
 
 def infer_camera(model):
@@ -164,14 +191,16 @@ def infer_camera(model):
             break
 
 if __name__ == '__main__':
-    # MODEL
-    model = load_model('models/checkpoint.ckpt')
+    if MODEL_SOURCE == 'run':
+        model = load_model_run(f"runs/{RUN_ID}/checkpoint.ckpt")
+    elif MODEL_SOURCE == 'huggingface':
+        model = load_model_hf(publish_name="DHSN-BottleOpener_800", force_download=False)
+    else:
+        raise Exception(f"MODEL_SOURCE {MODEL_SOURCE} is not supported!")
 
     if DATA_SOURCE == 'dataset':
-        infer_dataset(model = model)
-    
+        infer_dataset(model = model, split = 'test')
     elif DATA_SOURCE == 'camera':
         infer_camera(model = model)
-
     else:
         raise Exception(f"DATA_SOURCE {DATA_SOURCE} is not supported!")

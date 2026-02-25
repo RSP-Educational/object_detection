@@ -3,13 +3,23 @@ import torch
 import torch.nn as nn
 import torchvision
 import ssl
-from src.data import IMAGENET_MEAN, IMAGENET_STD
+import shutil
+from pathlib import Path
 from torchvision.models.detection.keypoint_rcnn import (
         keypointrcnn_resnet50_fpn,
         KeypointRCNNPredictor
     )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.ops import nms
+
+from huggingface_hub import HfApi
+
+if __name__ == '__main__':
+    from data import IMAGENET_MEAN, IMAGENET_STD
+    import huggingface as _hf
+else:
+    from src.data import IMAGENET_MEAN, IMAGENET_STD
+    import src.huggingface as _hf
 
 # Bypass SSL certificate verification (temporary solution)
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -115,4 +125,9 @@ class FasterRCNN(nn.Module):
         self.model.to(device)
         self.device = device
         return super().to(device)
-        
+
+if __name__ == '__main__':
+    RUN_ID = "ObjectDataset/FasterRCNN_800"
+    #_hf.publish_model(run_id=RUN_ID, publish_name="DHSN-BottleOpener_800")
+
+    _hf.load_state_dict(publish_name="DHSN-BottleOpener_800")
