@@ -127,7 +127,7 @@ class FasterRCNN(nn.Module):
         return super().to(device)
 
 if __name__ == '__main__':
-    RUN_ID = "ObjectDataset/FasterRCNN_800"
-    #_hf.publish_model(run_id=RUN_ID, publish_name="DHSN-BottleOpener_800")
+    RUN_ID = "ObjectDataset/FasterRCNN_1000"
+    _hf.publish_model(run_id=RUN_ID, publish_name="DHSN-BottleOpener_1000")
 
-    _hf.load_state_dict(publish_name="DHSN-BottleOpener_800")
+    _hf.load_state_dict(publish_name="DHSN-BottleOpener_1000")

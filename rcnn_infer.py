@@ -8,7 +8,8 @@ from src.visualization import draw_shape
 from src.constants import COLOR_RED, COLOR_TEXT, COLOR_WHITE, COLOR_BLACK, COLOR_GREEN
 import src.huggingface as _hf
 
-RUN_ID              = "ObjectDataset/FasterRCNN_800"
+IMAGE_SIZE          = 1000
+RUN_ID              = f"ObjectDataset/FasterRCNN_{IMAGE_SIZE}"
 MODEL_SOURCE        = 'huggingface' # 'run', 'huggingface'    
 DATA_SOURCE         = 'dataset' # 'dataset', 'camera'
 DEVICE              = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -35,7 +36,7 @@ def add_shape(img, class_idx, points, color):
             [shape_img.shape[1], shape_img.shape[0]]
         ])
     else: # Bottle Opener - Inlay, Bottle Opener - Cover, Bottle Opener
-        r = img.shape[1] / 3.2
+        r = img.shape[1] / (img.shape[0] / 1000 * 4.)#3.2
         src_pts = np.array([
             [r+np.sin(np.radians(240)) * r, r - np.cos(np.radians(240)) * r],
             [r+np.sin(np.radians(120)) * r, r - np.cos(np.radians(120)) * r],
