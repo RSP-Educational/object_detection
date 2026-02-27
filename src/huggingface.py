@@ -54,7 +54,7 @@ def publish_model(run_id:str, publish_name:str, repo_id:str = "SchulzR97/FasterR
     create_commit(repo_id=repo_id, operations=[commit_add], repo_type='model', commit_message=f"Add model statedict for {publish_name}")
 
 def load_state_dict(publish_name:str, repo_id:str = "SchulzR97/FasterRCNN", force_download:bool = False, clear_cache:bool = False):
-    login()
+    #login()
 
     repo_files = list_repo_files(repo_id, repo_type='model')
     if f"{publish_name}.pth" not in repo_files:
