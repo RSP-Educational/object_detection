@@ -11,7 +11,7 @@ import multiprocessing as mp
 
 # TRAINING SETUP
 RUN_ID              = "ObjectDataset/FasterRCNN_1000"
-EPOCHS              = 60
+EPOCHS              = 80
 LEARNING_RATE       = 2e-4
 MIN_LEARNING_RATE   = 1e-6
 BATCH_SIZE          = 2
